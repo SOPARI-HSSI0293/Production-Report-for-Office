@@ -250,9 +250,7 @@
 <div class="toolbar">
   <div class="field">
     <label>Tanggal</label>
-    <select id="filterDate" onchange="applyFilters()">
-      <option value="">Semua</option>
-    </select>
+    <input type="date" id="filterDate" onchange="applyFilters()">
   </div>
   <div class="field">
     <label>Shift</label>
@@ -399,10 +397,16 @@
       return;
     }
 
+    // Buang baris "sampah" - misal baris duplikat header yang kebaca sebagai data
+    // (contoh: Report_ID literalnya "Report_ID"), atau __date yang bukan 8 digit angka.
+    allRows = allRows.filter(r => /^\d{8}$/.test(r.__date));
+
     populateFilterOptions();
+    setDefaultDateFilter();
     renderTable(allRows);
   }
 
+  // Format YYYYMMDD -> DD/MM/YYYY (untuk tampilan/summary/PDF)
   function formatDateLabel(yyyymmdd){
     if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd;
     const y = yyyymmdd.substring(0,4);
@@ -411,12 +415,33 @@
     return d + '/' + m + '/' + y;
   }
 
+  // Format YYYYMMDD -> YYYY-MM-DD (untuk value <input type="date">)
+  function toIsoDate(yyyymmdd){
+    if (!yyyymmdd || yyyymmdd.length !== 8) return '';
+    return yyyymmdd.substring(0,4) + '-' + yyyymmdd.substring(4,6) + '-' + yyyymmdd.substring(6,8);
+  }
+
+  // Format YYYY-MM-DD (dari <input type="date">) -> YYYYMMDD (untuk cocokkan ke data)
+  function fromIsoDate(iso){
+    return iso ? iso.replace(/-/g, '') : '';
+  }
+
+  function pad2(n){ return n < 10 ? '0'+n : ''+n; }
+
+  // Default filter tanggal = H-1 (kemarin) dari hari ini
+  function setDefaultDateFilter(){
+    const input = document.getElementById('filterDate');
+    if (input.dataset.userChanged === '1') return; // jangan timpa kalau user sudah pernah pilih manual
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const iso = d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+    input.value = iso;
+  }
+
   function populateFilterOptions(){
-    const dates = [...new Set(allRows.map(r=>r.__date).filter(Boolean))].sort().reverse();
     const shifts = [...new Set(allRows.map(r=>r.__shift).filter(Boolean))].sort();
     const lines = [...new Set(allRows.map(r=>r.__line).filter(Boolean))].sort();
 
-    fillSelect('filterDate', dates, formatDateLabel);
     fillSelect('filterShift', shifts, v=>'Shift ' + v);
     fillSelect('filterLine', lines, v=>'Line ' + v);
   }
@@ -430,7 +455,8 @@
   }
 
   function applyFilters(){
-    const dateF = document.getElementById('filterDate').value;
+    document.getElementById('filterDate').dataset.userChanged = '1';
+    const dateF = fromIsoDate(document.getElementById('filterDate').value);
     const shiftF = document.getElementById('filterShift').value;
     const lineF = document.getElementById('filterLine').value;
     const searchF = document.getElementById('filterSearch').value.trim().toLowerCase();
@@ -450,6 +476,7 @@
   }
 
   function resetFilters(){
+    document.getElementById('filterDate').dataset.userChanged = '1';
     document.getElementById('filterDate').value = '';
     document.getElementById('filterShift').value = '';
     document.getElementById('filterLine').value = '';
@@ -520,7 +547,7 @@
     const lineF = document.getElementById('filterLine').value;
 
     let subtitle = 'Sheet: ' + sheetLabel;
-    if (dateF) subtitle += ' | Tanggal: ' + formatDateLabel(dateF);
+    if (dateF) subtitle += ' | Tanggal: ' + formatDateLabel(fromIsoDate(dateF));
     if (shiftF) subtitle += ' | Shift: ' + shiftF;
     if (lineF) subtitle += ' | Line: ' + lineF;
 
