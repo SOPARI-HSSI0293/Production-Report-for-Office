@@ -139,22 +139,42 @@
   .error-box b{display:block;margin-bottom:4px;}
   #printTitle{display:none;}
   @media print{
+    @page{
+      size: A4 landscape;
+      margin: 8mm;
+    }
+    html, body{
+      width: 100%;
+      background: #fff;
+    }
     header, .toolbar, .summary, .btn-export{display:none !important;}
     #printTitle{
       display:block;
-      font-size:16px;
+      font-size:14px;
       font-weight:700;
-      margin:0 0 12px 4px;
+      margin:0 0 8px 0;
     }
     .table-wrap{
       max-height:none;
       overflow:visible;
       border:none;
       margin:0;
+      width:100%;
     }
-    table{font-size:10px;}
+    table{
+      font-size:7px;
+      width:100%;
+      table-layout:fixed;
+      border-collapse:collapse;
+    }
+    thead th, tbody td{
+      white-space:normal;
+      word-break:break-word;
+      padding:2px 3px;
+    }
     thead th{position:static;}
     tbody td:first-child, thead th:first-child{position:static; box-shadow:none;}
+    tr{page-break-inside:avoid;}
   }
   .summary{
     padding:10px 20px;
