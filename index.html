@@ -121,6 +121,10 @@
     cursor:pointer;
     height:36px;
     color:#fff;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    box-sizing:border-box;
   }
   .btn-excel{background:#15803d;}
   .btn-excel:hover{background:#166534;}
@@ -290,7 +294,7 @@
   </div>
   <button class="btn-reset" onclick="resetFilters()">Reset Filter</button>
   <button class="btn-export btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
-  <button class="btn-export btn-pdf" onclick="exportPdf()">⬇ Export PDF</button>
+  <a class="btn-export btn-pdf" href="https://drive.google.com/drive/folders/1dD7890SBmTKg7I8CHA5_Rgn5-VB67RRF?usp=drive_link" target="_blank" rel="noopener">⬇ File PDF</a>
 </div>
 
 <div class="summary" id="summary"></div>
