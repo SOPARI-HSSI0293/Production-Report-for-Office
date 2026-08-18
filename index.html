@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laporan Produksi</title>
+<style>
+  :root{
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --border:#e2e6ec;
+    --primary:#2563eb;
+    --primary-dark:#1d4ed8;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --shift1:#fde68a;
+    --shift2:#bfdbfe;
+    --shift3:#c7d2fe;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  header{
+    background:var(--card);
+    border-bottom:1px solid var(--border);
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  header h1{
+    font-size:17px;
+    margin:0;
+    font-weight:600;
+  }
+  .tabs{
+    display:flex;
+    gap:6px;
+    background:var(--bg);
+    padding:4px;
+    border-radius:10px;
+  }
+  .tabs button{
+    border:none;
+    background:transparent;
+    padding:8px 16px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+    transition:all .15s;
+  }
+  .tabs button.active{
+    background:var(--primary);
+    color:#fff;
+  }
+  .toolbar{
+    background:var(--card);
+    border-bottom:1px solid var(--border);
+    padding:12px 20px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    position:sticky;
+    top:57px;
+    z-index:19;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .field label{
+    font-size:11px;
+    color:var(--muted);
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+  }
+  .field select, .field input{
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:13px;
+    min-width:130px;
+    background:#fff;
+    color:var(--text);
+  }
+  .field input[type="search"]{
+    min-width:200px;
+  }
+  .btn-reset{
+    padding:8px 14px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--muted);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    height:36px;
+  }
+  .btn-reset:hover{background:#f3f4f6;}
+  .btn-export{
+    padding:8px 14px;
+    border-radius:8px;
+    border:1px solid transparent;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    height:36px;
+    color:#fff;
+  }
+  .btn-excel{background:#15803d;}
+  .btn-excel:hover{background:#166534;}
+  .btn-pdf{background:#b91c1c;}
+  .btn-pdf:hover{background:#991b1b;}
+  .error-box{
+    margin:16px 20px;
+    padding:14px 16px;
+    background:#fef2f2;
+    border:1px solid #fecaca;
+    border-radius:10px;
+    color:#991b1b;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .error-box b{display:block;margin-bottom:4px;}
+  #printTitle{display:none;}
+  @media print{
+    header, .toolbar, .summary, .btn-export{display:none !important;}
+    #printTitle{
+      display:block;
+      font-size:16px;
+      font-weight:700;
+      margin:0 0 12px 4px;
+    }
+    .table-wrap{
+      max-height:none;
+      overflow:visible;
+      border:none;
+      margin:0;
+    }
+    table{font-size:10px;}
+    thead th{position:static;}
+    tbody td:first-child, thead th:first-child{position:static; box-shadow:none;}
+  }
+  .summary{
+    padding:10px 20px;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+  .summary b{color:var(--text);}
+  .table-wrap{
+    margin:0 20px 24px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow:auto;
+    max-height:calc(100vh - 220px);
+  }
+  table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:12.5px;
+    white-space:nowrap;
+  }
+  thead th{
+    position:sticky;
+    top:0;
+    background:#eef2f8;
+    color:var(--text);
+    text-align:left;
+    padding:9px 12px;
+    border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border);
+    z-index:5;
+  }
+  thead th:first-child, tbody td:first-child{
+    position:sticky;
+    left:0;
+    background:#eef2f8;
+    z-index:6;
+    box-shadow:2px 0 3px rgba(0,0,0,0.04);
+  }
+  tbody td:first-child{background:#fff; z-index:2;}
+  tbody tr:nth-child(even) td:first-child{background:#f9fafb;}
+  tbody td{
+    padding:8px 12px;
+    border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border);
+  }
+  tbody tr:nth-child(even){background:#f9fafb;}
+  tbody tr:hover td{background:#eff6ff;}
+  .badge{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:700;
+  }
+  .badge.shift-1{background:var(--shift1);}
+  .badge.shift-2{background:var(--shift2);}
+  .badge.shift-3{background:var(--shift3);}
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .loading{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:16px 20px;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .spinner{
+    width:16px;height:16px;
+    border:2px solid var(--border);
+    border-top-color:var(--primary);
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Laporan Produksi</h1>
+  <div class="tabs">
+    <button id="tab-coil" class="active" onclick="switchSheet('coil')">Coil</button>
+    <button id="tab-sheet" onclick="switchSheet('sheet')">Sheet</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="field">
+    <label>Tanggal</label>
+    <select id="filterDate" onchange="applyFilters()">
+      <option value="">Semua</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Shift</label>
+    <select id="filterShift" onchange="applyFilters()">
+      <option value="">Semua</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Line</label>
+    <select id="filterLine" onchange="applyFilters()">
+      <option value="">Semua</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Cari</label>
+    <input type="search" id="filterSearch" placeholder="Cari packing no, customer, spec..." oninput="applyFilters()">
+  </div>
+  <button class="btn-reset" onclick="resetFilters()">Reset Filter</button>
+  <button class="btn-export btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
+  <button class="btn-export btn-pdf" onclick="exportPdf()">⬇ Export PDF</button>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div id="printTitle"></div>
+
+<div id="loading" class="loading"><div class="spinner"></div> Memuat data...</div>
+<div id="errorBox" class="error-box" style="display:none;"></div>
+
+<div class="table-wrap" id="tableWrap" style="display:none;">
+  <table id="dataTable">
+    <thead><tr id="headerRow"></tr></thead>
+    <tbody id="bodyRows"></tbody>
+  </table>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  /* ==========================================================
+   * WAJIB DIISI: ganti dengan URL Web App Apps Script Anda
+   * (Deploy > Manage deployments > Web app > copy URL, ...berakhiran /exec)
+   * ========================================================== */
+  const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwGRZMWrFwHkNP0nuGpgFYm6AN9bwkteYByIoszCqsk_toRnOk_rz6IcJB32oVR64jBdQ/exec';
+
+  let currentSheet = 'coil';
+  let allHeaders = [];
+  let allRows = [];
+  let currentFilteredRows = [];
+  let loadTimeoutHandle = null;
+
+  function switchSheet(key){
+    currentSheet = key;
+    document.getElementById('tab-coil').classList.toggle('active', key==='coil');
+    document.getElementById('tab-sheet').classList.toggle('active', key==='sheet');
+    loadData();
+  }
+
+  /**
+   * JSONP request - dipakai karena fetch() biasa sering kena masalah CORS
+   * saat frontend dihosting di domain lain (mis. GitHub Pages) dan
+   * backend-nya Google Apps Script.
+   */
+  function jsonpRequest(url, onSuccess, onError, timeoutMs){
+    const cbName = '__jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const script = document.createElement('script');
+    let done = false;
+
+    function cleanup(){
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cbName] = function(data){
+      if (done) return;
+      done = true;
+      cleanup();
+      onSuccess(data);
+    };
+
+    const timer = setTimeout(function(){
+      if (done) return;
+      done = true;
+      cleanup();
+      onError(new Error('Timeout - server tidak merespons dalam ' + (timeoutMs/1000) + ' detik.'));
+    }, timeoutMs || 30000);
+
+    script.onerror = function(){
+      if (done) return;
+      done = true;
+      cleanup();
+      onError(new Error('Gagal memuat script dari GAS_API_URL. Cek apakah URL benar dan deployment "Who has access" = Anyone.'));
+    };
+
+    const sep = url.indexOf('?') > -1 ? '&' : '?';
+    script.src = url + sep + 'callback=' + cbName;
+    document.body.appendChild(script);
+  }
+
+  function loadData(){
+    if (GAS_API_URL.indexOf('GANTI_DENGAN_URL') > -1){
+      showError('GAS_API_URL belum diisi.\nBuka file index.html, cari baris "const GAS_API_URL", ganti dengan URL Web App Apps Script Anda (yang berakhiran /exec).');
+      return;
+    }
+
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('loading').innerHTML = '<div class="spinner"></div> Memuat data...';
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('tableWrap').style.display = 'none';
+
+    const url = GAS_API_URL + '?action=getData&sheet=' + encodeURIComponent(currentSheet);
+
+    jsonpRequest(url, function(result){
+      if (result && result.error){
+        onDataError({ message: result.error });
+        return;
+      }
+      onDataLoaded(result);
+    }, onDataError, 30000);
+  }
+
+  function showError(msg){
+    document.getElementById('loading').style.display = 'none';
+    const box = document.getElementById('errorBox');
+    box.style.display = 'block';
+    box.innerHTML = '<b>Gagal memuat data</b>' + msg.replace(/\n/g,'<br>');
+  }
+
+  function onDataError(err){
+    console.error('Load error:', err);
+    showError(err.message || String(err));
+  }
+
+  function onDataLoaded(result){
+    allHeaders = result.headers || [];
+    allRows = result.rows || [];
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('tableWrap').style.display = 'block';
+
+    if (allHeaders.length === 0){
+      showError('Sheet ditemukan tapi tidak ada baris data (hanya header atau kosong).');
+      document.getElementById('tableWrap').style.display = 'none';
+      return;
+    }
+
+    populateFilterOptions();
+    renderTable(allRows);
+  }
+
+  function formatDateLabel(yyyymmdd){
+    if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd;
+    const y = yyyymmdd.substring(0,4);
+    const m = yyyymmdd.substring(4,6);
+    const d = yyyymmdd.substring(6,8);
+    return d + '/' + m + '/' + y;
+  }
+
+  function populateFilterOptions(){
+    const dates = [...new Set(allRows.map(r=>r.__date).filter(Boolean))].sort().reverse();
+    const shifts = [...new Set(allRows.map(r=>r.__shift).filter(Boolean))].sort();
+    const lines = [...new Set(allRows.map(r=>r.__line).filter(Boolean))].sort();
+
+    fillSelect('filterDate', dates, formatDateLabel);
+    fillSelect('filterShift', shifts, v=>'Shift ' + v);
+    fillSelect('filterLine', lines, v=>'Line ' + v);
+  }
+
+  function fillSelect(id, values, labelFn){
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Semua</option>' +
+      values.map(v => '<option value="'+v+'">'+(labelFn?labelFn(v):v)+'</option>').join('');
+    if (values.includes(current)) sel.value = current;
+  }
+
+  function applyFilters(){
+    const dateF = document.getElementById('filterDate').value;
+    const shiftF = document.getElementById('filterShift').value;
+    const lineF = document.getElementById('filterLine').value;
+    const searchF = document.getElementById('filterSearch').value.trim().toLowerCase();
+
+    let filtered = allRows.filter(r=>{
+      if (dateF && r.__date !== dateF) return false;
+      if (shiftF && r.__shift !== shiftF) return false;
+      if (lineF && r.__line !== lineF) return false;
+      if (searchF){
+        const hay = allHeaders.map(h=>String(r[h]||'')).join(' ').toLowerCase();
+        if (!hay.includes(searchF)) return false;
+      }
+      return true;
+    });
+
+    renderTable(filtered);
+  }
+
+  function resetFilters(){
+    document.getElementById('filterDate').value = '';
+    document.getElementById('filterShift').value = '';
+    document.getElementById('filterLine').value = '';
+    document.getElementById('filterSearch').value = '';
+    renderTable(allRows);
+  }
+
+  function renderTable(rows){
+    currentFilteredRows = rows;
+    const headerRow = document.getElementById('headerRow');
+    const bodyRows = document.getElementById('bodyRows');
+
+    headerRow.innerHTML = allHeaders.map(h=>'<th>'+h+'</th>').join('');
+
+    if (rows.length === 0){
+      bodyRows.innerHTML = '<tr><td colspan="'+allHeaders.length+'" class="empty">Tidak ada data yang cocok dengan filter</td></tr>';
+    } else {
+      bodyRows.innerHTML = rows.map(r=>{
+        return '<tr>' + allHeaders.map((h,i)=>{
+          let val = r[h] === undefined || r[h] === null ? '' : r[h];
+          if (i === 0){
+            const shiftClass = r.__shift ? 'shift-' + r.__shift : '';
+            val = val + (r.__shift ? ' <span class="badge '+shiftClass+'">Shift '+r.__shift+'</span>' : '');
+          }
+          return '<td>'+val+'</td>';
+        }).join('') + '</tr>';
+      }).join('');
+    }
+
+    document.getElementById('summary').innerHTML =
+      'Menampilkan <b>' + rows.length + '</b> dari <b>' + allRows.length + '</b> baris data (' +
+      (currentSheet === 'coil' ? 'Coil' : 'Sheet') + ')';
+  }
+
+  function buildExportRows(){
+    const exportHeaders = allHeaders.slice();
+    return currentFilteredRows.map(r=>{
+      const row = {};
+      exportHeaders.forEach(h=> row[h] = r[h] === undefined || r[h] === null ? '' : r[h]);
+      return row;
+    });
+  }
+
+  function exportExcel(){
+    if (!currentFilteredRows.length){
+      alert('Tidak ada data untuk di-export (cek filter).');
+      return;
+    }
+    const data = buildExportRows();
+    const ws = XLSX.utils.json_to_sheet(data, { header: allHeaders });
+    const wb = XLSX.utils.book_new();
+    const sheetLabel = currentSheet === 'coil' ? 'Coil' : 'Sheet';
+    XLSX.utils.book_append_sheet(wb, ws, sheetLabel);
+
+    const dateF = document.getElementById('filterDate').value;
+    const fname = 'Laporan_Produksi_' + sheetLabel + (dateF ? '_' + dateF : '') + '.xlsx';
+    XLSX.writeFile(wb, fname);
+  }
+
+  function exportPdf(){
+    if (!currentFilteredRows.length){
+      alert('Tidak ada data untuk di-export (cek filter).');
+      return;
+    }
+    const sheetLabel = currentSheet === 'coil' ? 'Coil' : 'Sheet';
+    const dateF = document.getElementById('filterDate').value;
+    const shiftF = document.getElementById('filterShift').value;
+    const lineF = document.getElementById('filterLine').value;
+
+    let subtitle = 'Sheet: ' + sheetLabel;
+    if (dateF) subtitle += ' | Tanggal: ' + formatDateLabel(dateF);
+    if (shiftF) subtitle += ' | Shift: ' + shiftF;
+    if (lineF) subtitle += ' | Line: ' + lineF;
+
+    document.getElementById('printTitle').innerHTML =
+      '<div>Laporan Produksi</div><div style="font-size:12px;font-weight:400;color:#6b7280;margin-top:2px;">' + subtitle + '</div>';
+
+    window.print();
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>
