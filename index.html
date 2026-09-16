@@ -274,24 +274,25 @@
 <div class="toolbar">
   <div class="field">
     <label>Tanggal</label>
-    <input type="date" id="filterDate" onchange="applyFilters()">
+    <input type="date" id="filterDate" onchange="onDateChanged()">
   </div>
   <div class="field">
     <label>Shift</label>
-    <select id="filterShift" onchange="applyFilters()">
+    <select id="filterShift" onchange="loadData()">
       <option value="">Semua</option>
     </select>
   </div>
   <div class="field">
     <label>Line</label>
-    <select id="filterLine" onchange="applyFilters()">
+    <select id="filterLine" onchange="loadData()">
       <option value="">Semua</option>
     </select>
   </div>
   <div class="field">
     <label>Cari</label>
-    <input type="search" id="filterSearch" placeholder="Cari packing no, customer, spec..." oninput="applyFilters()">
+    <input type="search" id="filterSearch" placeholder="Cari packing no, customer, spec..." oninput="applySearchOnly()">
   </div>
+  <button class="btn-reset" id="btnAllDates" onclick="toggleAllDates()">Tampilkan Semua Tanggal</button>
   <button class="btn-reset" onclick="resetFilters()">Reset Filter</button>
   <button class="btn-export btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
   <a class="btn-export btn-pdf" href="https://drive.google.com/drive/folders/1dD7890SBmTKg7I8CHA5_Rgn5-VB67RRF?usp=drive_link" target="_blank" rel="noopener">⬇ File PDF</a>
@@ -317,7 +318,7 @@
    * WAJIB DIISI: ganti dengan URL Web App Apps Script Anda
    * (Deploy > Manage deployments > Web app > copy URL, ...berakhiran /exec)
    * ========================================================== */
-  const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwGRZMWrFwHkNP0nuGpgFYm6AN9bwkteYByIoszCqsk_toRnOk_rz6IcJB32oVR64jBdQ/exec';
+  const GAS_API_URL = 'GANTI_DENGAN_URL_WEB_APP_APPS_SCRIPT_ANDA/exec';
 
   let currentSheet = 'coil';
   let allHeaders = [];
@@ -385,7 +386,18 @@
     document.getElementById('errorBox').style.display = 'none';
     document.getElementById('tableWrap').style.display = 'none';
 
-    const url = GAS_API_URL + '?action=getData&sheet=' + encodeURIComponent(currentSheet);
+    const dateIso = document.getElementById('filterDate').value;
+    const dateF = showingAllDates ? '' : fromIsoDate(dateIso);
+    const shiftF = document.getElementById('filterShift').value;
+    const lineF = document.getElementById('filterLine').value;
+
+    let url = GAS_API_URL + '?action=getData&sheet=' + encodeURIComponent(currentSheet);
+    if (dateF) url += '&date=' + encodeURIComponent(dateF);
+    if (shiftF) url += '&shift=' + encodeURIComponent(shiftF);
+    if (lineF) url += '&line=' + encodeURIComponent(lineF);
+
+    // timeout lebih longgar khusus kalau user sengaja pilih "Semua Tanggal" (baca seluruh sheet)
+    const timeoutMs = showingAllDates ? 60000 : 30000;
 
     jsonpRequest(url, function(result){
       if (result && result.error){
@@ -393,7 +405,7 @@
         return;
       }
       onDataLoaded(result);
-    }, onDataError, 30000);
+    }, onDataError, timeoutMs);
   }
 
   function showError(msg){
@@ -426,8 +438,7 @@
     allRows = allRows.filter(r => /^\d{8}$/.test(r.__date));
 
     populateFilterOptions();
-    setDefaultDateFilter();
-    renderTable(allRows);
+    applySearchOnly(); // filter date/shift/line sudah dilakukan di server, tinggal terapkan pencarian teks
   }
 
   // Format YYYYMMDD -> DD/MM/YYYY (untuk tampilan/summary/PDF)
@@ -439,27 +450,40 @@
     return d + '/' + m + '/' + y;
   }
 
-  // Format YYYYMMDD -> YYYY-MM-DD (untuk value <input type="date">)
-  function toIsoDate(yyyymmdd){
-    if (!yyyymmdd || yyyymmdd.length !== 8) return '';
-    return yyyymmdd.substring(0,4) + '-' + yyyymmdd.substring(4,6) + '-' + yyyymmdd.substring(6,8);
-  }
-
-  // Format YYYY-MM-DD (dari <input type="date">) -> YYYYMMDD (untuk cocokkan ke data)
+  // Format YYYY-MM-DD (dari <input type="date">) -> YYYYMMDD (untuk kirim ke server)
   function fromIsoDate(iso){
     return iso ? iso.replace(/-/g, '') : '';
   }
 
   function pad2(n){ return n < 10 ? '0'+n : ''+n; }
 
-  // Default filter tanggal = H-1 (kemarin) dari hari ini
+  // Default filter tanggal = H-1 (kemarin) dari hari ini - dipanggil sekali saat halaman dibuka
   function setDefaultDateFilter(){
     const input = document.getElementById('filterDate');
-    if (input.dataset.userChanged === '1') return; // jangan timpa kalau user sudah pernah pilih manual
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    const iso = d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
-    input.value = iso;
+    input.value = d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+  }
+
+  let showingAllDates = false;
+
+  function onDateChanged(){
+    showingAllDates = false;
+    loadData();
+  }
+
+  function toggleAllDates(){
+    if (!showingAllDates){
+      const ok = confirm('Menampilkan semua tanggal akan membaca seluruh data di sheet dan bisa lambat kalau datanya sudah banyak. Lanjutkan?');
+      if (!ok) return;
+      showingAllDates = true;
+      document.getElementById('btnAllDates').textContent = '📅 Kembali ke Tanggal Tertentu';
+    } else {
+      showingAllDates = false;
+      document.getElementById('btnAllDates').textContent = 'Tampilkan Semua Tanggal';
+      if (!document.getElementById('filterDate').value) setDefaultDateFilter();
+    }
+    loadData();
   }
 
   function populateFilterOptions(){
@@ -478,34 +502,30 @@
     if (values.includes(current)) sel.value = current;
   }
 
-  function applyFilters(){
-    document.getElementById('filterDate').dataset.userChanged = '1';
-    const dateF = fromIsoDate(document.getElementById('filterDate').value);
-    const shiftF = document.getElementById('filterShift').value;
-    const lineF = document.getElementById('filterLine').value;
+  // Date/Shift/Line sudah difilter di server - fungsi ini cuma menerapkan
+  // pencarian teks bebas di atas data yang sudah diterima dari server.
+  function applySearchOnly(){
     const searchF = document.getElementById('filterSearch').value.trim().toLowerCase();
 
-    let filtered = allRows.filter(r=>{
-      if (dateF && r.__date !== dateF) return false;
-      if (shiftF && r.__shift !== shiftF) return false;
-      if (lineF && r.__line !== lineF) return false;
-      if (searchF){
+    let filtered = allRows;
+    if (searchF){
+      filtered = allRows.filter(r=>{
         const hay = allHeaders.map(h=>String(r[h]||'')).join(' ').toLowerCase();
-        if (!hay.includes(searchF)) return false;
-      }
-      return true;
-    });
+        return hay.includes(searchF);
+      });
+    }
 
     renderTable(filtered);
   }
 
   function resetFilters(){
-    document.getElementById('filterDate').dataset.userChanged = '1';
-    document.getElementById('filterDate').value = '';
+    showingAllDates = false;
+    document.getElementById('btnAllDates').textContent = 'Tampilkan Semua Tanggal';
+    setDefaultDateFilter();
     document.getElementById('filterShift').value = '';
     document.getElementById('filterLine').value = '';
     document.getElementById('filterSearch').value = '';
-    renderTable(allRows);
+    loadData();
   }
 
   function renderTable(rows){
@@ -581,6 +601,7 @@
     window.print();
   }
 
+  setDefaultDateFilter();
   loadData();
 </script>
 
